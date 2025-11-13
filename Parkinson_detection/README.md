@@ -62,6 +62,7 @@ pip install -r requirements.txt
 ```txt
 tensorflow
 numpy
+cv2
 matplotlib
 seaborn
 scikit-learn
