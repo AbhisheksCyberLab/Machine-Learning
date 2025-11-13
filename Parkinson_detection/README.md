@@ -32,11 +32,11 @@ Parkinson_Disease_Detection/
 │
 ├── dataset/
 │   ├── training/
-│   │   ├── Healthy/
-│   │   └── Parkinson/
+│   │   ├── no/
+│   │   └── yes/
 │   ├── testing/
-│   │   ├── Healthy/
-│   │   └── Parkinson/
+│   │   ├── no/
+│   │   └── yes/
 │
 ├── parkinsons_train.py        # CNN model training script
 ├── predict_patient.py         # Predict single or batch patient reports
@@ -63,6 +63,7 @@ pip install -r requirements.txt
 tensorflow
 numpy
 matplotlib
+seaborn
 scikit-learn
 ```
 
