@@ -133,7 +133,70 @@ plt.ylabel('Actual')
 plt.title('Confusion Matrix')
 plt.show()
 
-# STEP 8: SAVE MODEL LOCALLY
+
+# ======================
+# STEP 9: GRAD-CAM HEATMAP (Model Explainability)
+# ======================
+
+import cv2
+
+def generate_gradcam_heatmap(model, img_path, last_conv_layer_name='conv2d_2'):
+    """
+    Generate Grad-CAM heatmap for a given image and model.
+    """
+    # Load and preprocess image
+    img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
+    img_array = tf.keras.preprocessing.image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0) / 255.0
+
+    # Get the model’s gradient of the last conv layer output
+    grad_model = tf.keras.models.Model(
+        [model.inputs],
+        [model.get_layer(last_conv_layer_name).output, model.output]
+    )
+
+    with tf.GradientTape() as tape:
+        conv_outputs, predictions = grad_model(img_array)
+        loss = predictions[:, 0]  # assuming binary output (sigmoid)
+
+    grads = tape.gradient(loss, conv_outputs)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+
+    conv_outputs = conv_outputs[0]
+    heatmap = tf.reduce_mean(tf.multiply(pooled_grads, conv_outputs), axis=-1)
+
+    # Normalize the heatmap
+    heatmap = np.maximum(heatmap, 0)
+    heatmap /= np.max(heatmap)
+    return heatmap.numpy()
+
+# Example usage:
+sample_image_path = os.path.join(test_dir, "yes", os.listdir(os.path.join(test_dir, "yes"))[0])
+print(f"\nGenerating Grad-CAM heatmap for: {sample_image_path}")
+
+heatmap = generate_gradcam_heatmap(cnn_model, sample_image_path)
+
+# Display heatmap
+plt.matshow(heatmap)
+plt.title("Grad-CAM Heatmap")
+plt.axis('off')
+plt.show()
+
+# Overlay heatmap on the original image
+img = cv2.imread(sample_image_path)
+img = cv2.resize(img, (224, 224))
+heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
+heatmap = np.uint8(255 * heatmap)
+heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+superimposed_img = cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
+
+plt.imshow(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
+plt.title("Original Image with Grad-CAM Overlay")
+plt.axis('off')
+plt.show()
+
+
+# STEP 10: SAVE MODEL LOCALLY
 
 cnn_model.save('PD_CNN_Model.h5')
 print("Model saved successfully as PD_CNN_Model.h5 in current directory.")
