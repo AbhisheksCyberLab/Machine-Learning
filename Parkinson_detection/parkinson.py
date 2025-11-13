@@ -1,6 +1,7 @@
 # STEP 1: IMPORT LIBRARIES
 
 import os
+import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -9,6 +10,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import precision_score, recall_score, f1_score
 
 # Check GPU
 print("TensorFlow version:", tf.__version__)
@@ -134,66 +136,31 @@ plt.title('Confusion Matrix')
 plt.show()
 
 
-# ======================
-# STEP 9: GRAD-CAM HEATMAP (Model Explainability)
-# ======================
 
-import cv2
 
-def generate_gradcam_heatmap(model, img_path, last_conv_layer_name='conv2d_2'):
-    """
-    Generate Grad-CAM heatmap for a given image and model.
-    """
-    # Load and preprocess image
-    img = tf.keras.preprocessing.image.load_img(img_path, target_size=(224, 224))
-    img_array = tf.keras.preprocessing.image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0) / 255.0
+# STEP 8: CALCULATE PRECISION, RECALL, AND F1-SCORE
 
-    # Get the model’s gradient of the last conv layer output
-    grad_model = tf.keras.models.Model(
-        [model.inputs],
-        [model.get_layer(last_conv_layer_name).output, model.output]
-    )
+precision = precision_score(true_classes, predicted_classes)
+recall = recall_score(true_classes, predicted_classes)
+f1 = f1_score(true_classes, predicted_classes)
 
-    with tf.GradientTape() as tape:
-        conv_outputs, predictions = grad_model(img_array)
-        loss = predictions[:, 0]  # assuming binary output (sigmoid)
+print(f"Precision: {precision:.4f}")
+print(f"Recall: {recall:.4f}")
+print(f"F1 Score: {f1:.4f}")
 
-    grads = tape.gradient(loss, conv_outputs)
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+# STEP 9: VISUALIZE PRECISION, RECALL, AND F1-SCORE
 
-    conv_outputs = conv_outputs[0]
-    heatmap = tf.reduce_mean(tf.multiply(pooled_grads, conv_outputs), axis=-1)
+metrics_names = ['Precision', 'Recall', 'F1-Score']
+metrics_values = [precision, recall, f1]
 
-    # Normalize the heatmap
-    heatmap = np.maximum(heatmap, 0)
-    heatmap /= np.max(heatmap)
-    return heatmap.numpy()
-
-# Example usage:
-sample_image_path = os.path.join(test_dir, "yes", os.listdir(os.path.join(test_dir, "yes"))[0])
-print(f"\nGenerating Grad-CAM heatmap for: {sample_image_path}")
-
-heatmap = generate_gradcam_heatmap(cnn_model, sample_image_path)
-
-# Display heatmap
-plt.matshow(heatmap)
-plt.title("Grad-CAM Heatmap")
-plt.axis('off')
+plt.figure(figsize=(7,5))
+sns.barplot(x=metrics_names, y=metrics_values, palette='coolwarm')
+plt.title('Precision, Recall, and F1-Score on Test Data')
+plt.ylim(0, 1)
+plt.ylabel('Score')
 plt.show()
 
-# Overlay heatmap on the original image
-img = cv2.imread(sample_image_path)
-img = cv2.resize(img, (224, 224))
-heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
-heatmap = np.uint8(255 * heatmap)
-heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-superimposed_img = cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
 
-plt.imshow(cv2.cvtColor(superimposed_img, cv2.COLOR_BGR2RGB))
-plt.title("Original Image with Grad-CAM Overlay")
-plt.axis('off')
-plt.show()
 
 
 # STEP 10: SAVE MODEL LOCALLY
